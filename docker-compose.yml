@@ -1,0 +1,110 @@
+version: '3'
+services:
+  hass:
+    user: '1000:1000'
+    container_name: hass
+#    image: homeassistant/home-assistant
+    image: homeassistant/amd64-homeassistant:0.90.2
+    volumes:
+      - /home/$USER/hass_config:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+    depends_on:
+      - mosquitto
+    networks:
+      - hass
+
+  appdaemon:
+    user: '1000:1000'
+    container_name: appdaemon
+    image: acockburn/appdaemon:latest
+    env_file:
+      - .env.appdaemon
+    restart: unless-stopped
+    volumes:
+      - /home/$USER/hass_config/apdconf:/conf
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "5050:5050"
+    networks:
+      - hass
+  
+  mysql:
+    container_name: mariadb
+    image: mariadb
+    env_file:
+      - .env.mariadb
+    networks:
+      - hass
+
+    volumes:
+#      - mariadbdata:/var/lib/mysql
+      - /var/lib/mariadb:/var/lib/mysql
+    restart: unless-stopped
+    ports:
+      - '3306:3306'
+
+  influxdb:
+    container_name: influxdb
+    restart: unless-stopped
+    image: influxdb:latest
+    volumes:
+      - /var/lib/influxdb:/var/lib/influxdb
+#      - influxdb-config:/etc/influxdb/influxdb.conf
+    ports:
+      - '8086:8086'
+    networks:
+      - hass
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: "472"
+    ports:
+      - "3000:3000"
+    env_file:
+      - '.env.grafana'
+    restart: unless-stopped
+    links:
+      - influxdb
+    volumes:
+      - /var/lib/grafana:/var/lib/grafana    
+      - /var/log/grafana:/var/log/grafana   
+    networks:
+      - hass
+
+  mosquitto:
+    container_name: mosquitto
+    restart: unless-stopped
+    image: eclipse-mosquitto:latest
+    env_file:
+      - '.env.mqtt'
+    ports:
+      - 1883:1883
+    volumes:
+      - /var/lib/mosquitto:/mosquitto/data
+      - /var/log/mqtt:/mosquitto/log
+      # mount the directory, not the log file
+    networks:
+      - hass
+
+  nodered:
+    container_name: nodered
+    restart: unless-stopped
+    image: nodered/node-red-docker:latest
+    ports:
+      - "1880:1880"
+    volumes:
+      - nodereddata:/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - hass
+
+volumes:
+  nodereddata:
+
+networks:
+  hass:
+
+
