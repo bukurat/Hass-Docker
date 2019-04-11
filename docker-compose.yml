@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 services:
   hass:
     user: '1000:1000'
@@ -9,12 +9,13 @@ services:
       - /home/$USER/hass_config:/config
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
-    ports:
-      - "8123:8123"
+    # ports:
+    #   - "8123:8123"
     depends_on:
       - mosquitto
-    networks:
-      - hass
+      - mysql
+    network_mode: host
+
 
   appdaemon:
     user: '1000:1000'
@@ -26,25 +27,23 @@ services:
     volumes:
       - /home/$USER/hass_config/apdconf:/conf
       - /etc/localtime:/etc/localtime:ro
-    ports:
-      - "5050:5050"
-    networks:
-      - hass
+    # ports:
+    #   - "5050:5050"
+    depends_on: hass
+    network_mode: host
   
   mysql:
     container_name: mariadb
     image: mariadb
     env_file:
       - .env.mariadb
-    networks:
-      - hass
-
     volumes:
 #      - mariadbdata:/var/lib/mysql
       - /var/lib/mariadb:/var/lib/mysql
     restart: unless-stopped
-    ports:
-      - '3306:3306'
+    # ports:
+    #   - '3306:3306'
+    network_mode: host
 
   influxdb:
     container_name: influxdb
@@ -53,16 +52,30 @@ services:
     volumes:
       - /var/lib/influxdb:/var/lib/influxdb
 #      - influxdb-config:/etc/influxdb/influxdb.conf
-    ports:
-      - '8086:8086'
-    networks:
-      - hass
+    # ports:
+    #   - '8086:8086'
+    network_mode: host
+
+  mosquitto:
+    container_name: mosquitto
+    restart: unless-stopped
+    image: eclipse-mosquitto:latest
+    env_file:
+      - '.env.mqtt'
+    # ports:
+    #   - 1883:1883
+    volumes:
+      - /var/lib/mosquitto:/mosquitto/data
+      - /var/log/mqtt:/mosquitto/log
+      # mount the directory, not the log file
+    network_mode: host
+    
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     user: "472"
     ports:
-      - "3000:3000"
+     - "3000:3000"
     env_file:
       - '.env.grafana'
     restart: unless-stopped
@@ -71,21 +84,6 @@ services:
     volumes:
       - /var/lib/grafana:/var/lib/grafana    
       - /var/log/grafana:/var/log/grafana   
-    networks:
-      - hass
-
-  mosquitto:
-    container_name: mosquitto
-    restart: unless-stopped
-    image: eclipse-mosquitto:latest
-    env_file:
-      - '.env.mqtt'
-    ports:
-      - 1883:1883
-    volumes:
-      - /var/lib/mosquitto:/mosquitto/data
-      - /var/log/mqtt:/mosquitto/log
-      # mount the directory, not the log file
     networks:
       - hass
 
@@ -100,9 +98,21 @@ services:
       - /etc/localtime:/etc/localtime:ro
     networks:
       - hass
+  
+  tasmoadmin:
+    container_name: tasmoadmin
+    restart: unless-stopped
+    image: raymondmm/tasmoadmin
+    ports:
+      - 9999:80
+    volumes:
+      - tasmoadmin_data:/data
+    networks:
+      - hass
 
 volumes:
   nodereddata:
+  tasmoadmin_data:
 
 networks:
   hass:
