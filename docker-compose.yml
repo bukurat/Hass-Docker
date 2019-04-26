@@ -29,7 +29,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
     # ports:
     #   - "5050:5050"
-    depends_on: hass
+    depends_on:
+      - hass
     network_mode: host
   
   mysql:
@@ -106,13 +107,30 @@ services:
     ports:
       - 9999:80
     volumes:
-      - tasmoadmin_data:/data
+      - /var/lib/tasmoadmin_data:/data #persist across builds
     networks:
       - hass
 
+  netdata:
+    container_name: netdata
+    image: netdata/netdata
+    restart: unless-stopped
+    ports:
+      - 19999:19999
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PGID=130
+
 volumes:
   nodereddata:
-  tasmoadmin_data:
+
 
 networks:
   hass:
