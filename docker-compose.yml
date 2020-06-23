@@ -1,16 +1,16 @@
 version: '3.7'
 services:
   hass:
-    user: '1000:1000'
+    user: '0:0'  # latest version has to run as root for some strange reason.
     container_name: hass
-#    image: homeassistant/home-assistant
-    image: homeassistant/amd64-homeassistant:0.90.2
+    image: homeassistant/home-assistant:latest
+#    image: homeassistant/amd64-homeassistant:0.90.2
     volumes:
       - /home/$USER/hass_config:/config
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     # ports:
-    #   - "8123:8123"
+    #   - "8123:8123"  # port mapping not applicable for host network.
     depends_on:
       - mosquitto
       - mysql
@@ -115,6 +115,7 @@ services:
     container_name: netdata
     image: netdata/netdata
     restart: unless-stopped
+    hostname: pegasus.local
     ports:
       - 19999:19999
     cap_add:
